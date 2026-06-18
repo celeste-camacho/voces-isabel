@@ -1,1 +1,344 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Voces de Mujeres – Isabel Garma</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0612; display: flex; justify-content: center; align-items: center; min-height: 100vh; overflow: hidden; }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<script>
+// ============================================================
+// VOCES DE MUJERES – Isabel Garma
+// Sketch p5.js por Celeste Camacho
+//
 
+
+const FRAGMENTOS = [
+  "voces lejanas...",
+  "las voces de la salud,",
+  "de la justicia,",
+  "historias de mujeres,",
+  "amor a la naturaleza,",
+  "a la vida…",
+  "Voces de Mujeres.",
+  "navegando y rodando",
+  "por mares y plazas,",
+  "a todas las mujeres",
+  "del mundo."
+];
+
+let imgs = {};
+let imgNames = ['aromito','collage','pasionaria','algarrobo','isabel'];
+let loaded = {};
+let particles = [];
+let textParticles = [];
+let branches = [];
+let t = 0;
+let W, H;
+
+function preload() {
+  imgNames.forEach(name => {
+    loadImage(`assets/${name}.jpg`,
+      img => { imgs[name] = img; loaded[name] = true; },
+      () => { loaded[name] = false; }
+    );
+  });
+}
+
+function setup() {
+  W = min(windowWidth, 900);
+  H = min(windowHeight, 900);
+  createCanvas(W, H);
+  colorMode(HSB, 360, 100, 100, 100);
+  imageMode(CENTER);
+  textAlign(CENTER, CENTER);
+
+  // Generar ramas (flores dibujadas con código)
+  for (let i = 0; i < 6; i++) {
+    branches.push(new Branch(
+      random(W * 0.1, W * 0.9),
+      random(H * 0.1, H * 0.9),
+      random(40, 90),
+      random(360)
+    ));
+  }
+
+  // Partículas de brillo
+  for (let i = 0; i < 60; i++) {
+    particles.push({
+      x: random(W), y: random(H),
+      r: random(1, 4),
+      hue: random([40, 200, 280, 320]),
+      speed: random(0.2, 0.8),
+      phase: random(TWO_PI)
+    });
+  }
+
+  // Partículas de texto
+  FRAGMENTOS.forEach((frag, i) => {
+    textParticles.push(new TextParticle(frag, i));
+  });
+}
+
+function draw() {
+  t += 0.008;
+  background(260, 60, 8, 100);
+
+  // --- CAPA 1: fondo aromito ---
+  drawLayer('aromito', W/2, H/2, W, H, 'multiply', 55 + 15 * sin(t * 0.3));
+
+  // --- CAPA 2: collage/cielo ---
+  drawLayer('collage', W/2, H/2, W * 0.85, H * 0.85, 'screen', 25 + 10 * sin(t * 0.2 + 1));
+
+  // --- CAPA 3: pasionaria ---
+  let px = W * 0.15 + 30 * sin(t * 0.5);
+  let py = H * 0.2 + 20 * cos(t * 0.4);
+  drawLayer('pasionaria', px, py, W * 0.35, W * 0.35, 'screen', 35 + 15 * sin(t));
+
+  // --- CAPA 4: algarrobo ---
+  let ax = W * 0.82 + 20 * cos(t * 0.3);
+  let ay = H * 0.78 + 15 * sin(t * 0.5);
+  drawLayer('algarrobo', ax, ay, W * 0.38, W * 0.38, 'screen', 30 + 10 * cos(t * 0.7));
+
+  // --- Ramas generativas (círculo alrededor de Isabel) ---
+  branches.forEach(b => b.draw());
+
+  // --- Halo generativo central ---
+  drawHalo(W/2, H/2);
+
+  // --- RETRATO Isabel Garma ---
+  drawIsabel(W/2, H/2);
+
+  // --- Brillo de partículas ---
+  particles.forEach(p => {
+    let bright = 50 + 50 * sin(t * p.speed + p.phase);
+    fill(p.hue, 70, 100, bright * 0.6);
+    noStroke();
+    circle(p.x + 5 * sin(t * p.speed + p.phase), p.y + 3 * cos(t * p.speed), p.r * 2);
+    p.y -= p.speed * 0.3;
+    if (p.y < 0) p.y = H;
+  });
+
+  // --- Fragmentos de texto ---
+  textParticles.forEach(tp => tp.update().draw());
+
+  // --- Título sutil ---
+  drawTitle();
+
+  t; // keep ref
+}
+
+// ── helpers ────────────────────────────────────────────────
+
+function drawLayer(name, x, y, w, h, blend, alpha) {
+  if (imgs[name]) {
+    let img = imgs[name];
+    let scale = max(w / img.width, h / img.height);
+    push();
+    blendMode(blend === 'multiply' ? MULTIPLY : ADD);
+    tint(360, 0, 100, alpha);
+    image(img, x, y, img.width * scale, img.height * scale);
+    pop();
+  } else {
+    // placeholder generativo
+    push();
+    blendMode(ADD);
+    noFill();
+    stroke(name === 'aromito' ? 45 : name === 'collage' ? 200 : name === 'pasionaria' ? 90 : 160,
+      60, 80, 20);
+    strokeWeight(1);
+    for (let i = 0; i < 3; i++) {
+      ellipse(x + random(-20,20), y + random(-20,20), w * 0.8 + random(-50,50), h * 0.8 + random(-50,50));
+    }
+    pop();
+  }
+}
+
+function drawHalo(cx, cy) {
+  let r = W * 0.22;
+  push();
+  blendMode(ADD);
+  noFill();
+  for (let i = 0; i < 5; i++) {
+    let rr = r + i * 8 + 6 * sin(t + i);
+    let alpha = 40 - i * 6;
+    stroke(280 + 20 * sin(t * 0.5), 50, 90, alpha);
+    strokeWeight(1.5 - i * 0.2);
+    circle(cx, cy, rr * 2);
+  }
+  // pétalos generativos alrededor
+  for (let a = 0; a < TWO_PI; a += TWO_PI / 8) {
+    let px = cx + (r + 10) * cos(a + t * 0.1);
+    let py = cy + (r + 10) * sin(a + t * 0.1);
+    drawPetal(px, py, 18 + 5 * sin(t + a), a + HALF_PI);
+  }
+  pop();
+}
+
+function drawPetal(x, y, size, angle) {
+  push();
+  translate(x, y);
+  rotate(angle);
+  blendMode(ADD);
+  noFill();
+  stroke(40 + 20 * sin(t), 80, 100, 50);
+  strokeWeight(0.8);
+  beginShape();
+  for (let a = 0; a < TWO_PI; a += 0.1) {
+    let r = size * (0.5 + 0.5 * cos(a));
+    vertex(r * cos(a), r * sin(a) * 0.5);
+  }
+  endShape(CLOSE);
+  pop();
+}
+
+function drawIsabel(cx, cy) {
+  let r = W * 0.19;
+  push();
+  // máscara circular con gradiente
+  if (imgs['isabel']) {
+    let img = imgs['isabel'];
+    let s = (r * 2) / min(img.width, img.height);
+    // clip circular
+    drawingContext.save();
+    drawingContext.beginPath();
+    drawingContext.arc(cx, cy, r, 0, Math.PI * 2);
+    drawingContext.clip();
+    // sepia via tint
+    blendMode(BLEND);
+    tint(35, 30, 85, 88);
+    image(img, cx, cy, img.width * s * 1.1, img.height * s * 1.1);
+    drawingContext.restore();
+  } else {
+    // placeholder
+    fill(35, 20, 70, 70);
+    noStroke();
+    circle(cx, cy, r * 2);
+    fill(35, 10, 90, 60);
+    textSize(14);
+    text("Isabel Garma\n(assets/isabel.jpg)", cx, cy);
+  }
+  // borde luminoso
+  blendMode(ADD);
+  noFill();
+  stroke(40, 60, 100, 40 + 20 * sin(t));
+  strokeWeight(2);
+  circle(cx, cy, r * 2 + 4);
+  stroke(280, 40, 100, 25 + 15 * cos(t * 0.7));
+  circle(cx, cy, r * 2 + 12);
+  pop();
+}
+
+function drawTitle() {
+  push();
+  blendMode(BLEND);
+  fill(40, 10, 100, 70);
+  noStroke();
+  textFont('Georgia, serif');
+  textSize(W * 0.022);
+  textStyle(ITALIC);
+  text("Voces de Mujeres", W/2, H * 0.06);
+  textSize(W * 0.013);
+  textStyle(NORMAL);
+  fill(280, 20, 100, 50);
+  text("Isabel Garma", W/2, H * 0.93);
+  pop();
+}
+
+// ── clases ──────────────────────────────────────────────────
+
+class Branch {
+  constructor(x, y, size, hue) {
+    this.x = x; this.y = y;
+    this.size = size; this.hue = hue;
+    this.phase = random(TWO_PI);
+    this.speed = random(0.003, 0.008);
+  }
+  draw() {
+    push();
+    translate(this.x + 10 * sin(t * this.speed * 10 + this.phase),
+              this.y + 8 * cos(t * this.speed * 8 + this.phase));
+    rotate(t * this.speed + this.phase);
+    blendMode(ADD);
+    noFill();
+    stroke(this.hue, 70, 90, 20 + 15 * sin(t + this.phase));
+    strokeWeight(0.6);
+    // ramita
+    for (let i = 0; i < 5; i++) {
+      let a = (TWO_PI / 5) * i + t * this.speed;
+      let len = this.size * (0.6 + 0.4 * sin(t + i));
+      line(0, 0, len * cos(a), len * sin(a));
+      // florcita
+      let fx = len * cos(a), fy = len * sin(a);
+      for (let j = 0; j < 5; j++) {
+        let ba = (TWO_PI / 5) * j;
+        let pr = this.size * 0.12;
+        fill(this.hue + 20, 50, 100, 15);
+        noStroke();
+        ellipse(fx + pr * cos(ba), fy + pr * sin(ba), pr * 1.5, pr * 1.5);
+      }
+    }
+    pop();
+  }
+}
+
+class TextParticle {
+  constructor(text, idx) {
+    this.txt = text;
+    this.reset(idx);
+  }
+  reset(idx) {
+    // distribuir alrededor del retrato, no encima
+    let angle = random(TWO_PI);
+    let dist = random(W * 0.28, W * 0.46);
+    this.x = W/2 + dist * cos(angle);
+    this.y = H/2 + dist * sin(angle);
+    this.alpha = 0;
+    this.fadeIn = true;
+    this.life = 0;
+    this.maxLife = random(180, 320);
+    this.delay = idx * 40 + random(60);
+    this.size = random(W * 0.013, W * 0.019);
+    this.hue = random([40, 200, 280, 310]);
+    this.vx = random(-0.15, 0.15);
+    this.vy = random(-0.2, 0.05);
+    this.born = frameCount;
+  }
+  update() {
+    if (frameCount - this.born < this.delay) return this;
+    this.life++;
+    this.x += this.vx;
+    this.y += this.vy;
+    if (this.life < 40) this.alpha = map(this.life, 0, 40, 0, 85);
+    else if (this.life > this.maxLife - 40) this.alpha = map(this.life, this.maxLife - 40, this.maxLife, 85, 0);
+    if (this.life >= this.maxLife) this.reset();
+    return this;
+  }
+  draw() {
+    if (frameCount - this.born < this.delay) return;
+    push();
+    blendMode(ADD);
+    fill(this.hue, 30, 100, this.alpha);
+    noStroke();
+    textFont('Georgia, serif');
+    textSize(this.size);
+    textStyle(ITALIC);
+    text(this.txt, this.x, this.y);
+    pop();
+  }
+}
+
+function windowResized() {
+  W = min(windowWidth, 900);
+  H = min(windowHeight, 900);
+  resizeCanvas(W, H);
+}
+</script>
+</body>
+</html>
